@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Онлайн Рандомайзер</title>
+  <title>RandStuff.ru - Генератор случайных чисел онлайн</title>
   <meta name="description" content="Быстрый и бесплатный онлайн-рандомайзер чисел. Генератор случайных чисел по диапазону, списку и другим условиям. Без рекламы.">
   <meta property="og:title" content="Онлайн Рандомайзер">
   <meta property="og:description" content="Генератор случайных чисел — быстро, просто и без рекламы.">
@@ -322,7 +322,7 @@
 <body>
   <div class="topbar">
     <div class="menu">
-      <a href="index.html" class="logo">BandStuff</a>
+      <a href="index.html" class="logo">RandStuff</a>
       <a class="menu-item"  href="wheel.html">🎯<span>Колесо фортуны</span></a>
       <a class="menu-item"  href="index.html">123<br><span>Числа</span></a>
       <a class="menu-item"  href="passwords.html">***<span>Пароли</span></a>
@@ -393,6 +393,7 @@
 </div>
 
   <script>
+    let previouslyGenerated = new Set(JSON.parse(sessionStorage.getItem('previouslyGenerated')) || [])
     const fixedNumbersForFirstAttempt = [507, 14, 18]; 
 
     window.onload = () => {
@@ -530,6 +531,7 @@
         setTimeout(() => {
             let numbers = [];
 
+            previouslyGenerated.forEach(num => excludeSet.add(num));
             if (exclude && (max - min + 1 - excludeSet.size < count)) {
                 alert("Диапазон слишком маленький для исключения повторов или слишком много чисел исключено.");
                 return;
@@ -543,12 +545,15 @@
                      if (!used.has(num)) { 
                         used.add(num);
                         numbers.push(num);
+                        previouslyGenerated.add(num);
                     }
                 } else {
                     alert("Не удалось сгенерировать все числа из-за ограничений исключения.");
                     break;
                 }
             }
+
+            sessionStorage.setItem('previouslyGenerated', JSON.stringify([...previouslyGenerated]));
 
             const resultEl = document.getElementById('result');
             resultEl.innerHTML = '';
