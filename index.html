@@ -393,47 +393,19 @@
 </div>
 
   <script>
-    let previouslyGenerated = new Set(JSON.parse(sessionStorage.getItem('previouslyGenerated')) || [])
-    const fixedNumbersForFirstAttempt = [1512, 112, 988]; 
-
-    window.onload = () => {
-        sessionStorage.removeItem('savedNumbers'); 
-
-        const navigationEntries = performance.getEntriesByType("navigation");
-        let navigationType = "navigate";
-
-        if (navigationEntries.length > 0) {
-            navigationType = navigationEntries[0].type;
-        }
-
-        const hasFixedNumbersBeenTriggeredEver = sessionStorage.getItem('fixedNumbersTriggeredEver') === 'true'; 
-
-        if (navigationType === "reload" && !hasFixedNumbersBeenTriggeredEver) { 
-            sessionStorage.setItem('triggerFixedForNextGeneration', 'true'); 
-            sessionStorage.setItem('fixedNumbersNextIndex', '0'); // Инициализируем индекс для фиксированных чисел
-        } else {
-            sessionStorage.removeItem('triggerFixedForNextGeneration'); 
-            sessionStorage.removeItem('fixedNumbersNextIndex'); // Очищаем, если не нужно выдавать фиксированные
-        }
-    };
-
-    function setFixedNumbersTriggeredEver() { 
-        sessionStorage.setItem('fixedNumbersTriggeredEver', 'true'); 
-    }
+    let previouslyGenerated = new Set(JSON.parse(sessionStorage.getItem('previouslyGenerated')) || []);
 
     function generateRandom(min, max, excludeSet) {
       let num;
       let attempts = 0;
-      const maxGenerateAttempts = (max - min + 1) * 2; 
-
+      const maxGenerateAttempts = (max - min + 1) * 2;
       do {
         num = Math.floor(Math.random() * (max - min + 1)) + min;
         attempts++;
         if (attempts > maxGenerateAttempts) {
-            console.warn("Не удалось найти уникальное число в заданном диапазоне с исключением.");
-            return null; 
+            return null;
         }
-      } while (excludeSet && excludeSet.has(num)); 
+      } while (excludeSet && excludeSet.has(num));
       return num;
     }
 
@@ -442,113 +414,32 @@
         const max = parseInt(document.getElementById('maxInput').value) || 100;
         const exclude = document.getElementById('exclude').checked;
         const count = parseInt(document.getElementById('rangeSlider').value);
-
         let excludeSet = new Set();
         if (exclude) {
           const input = document.getElementById('excludeList').value;
-          excludeSet = new Set(
-            input
-              .split(/[\s,]+/)
-              .map(n => parseInt(n))
-              .filter(n => !isNaN(n))
-          );
+          excludeSet = new Set(input.split(/[\s,]+/).map(n => parseInt(n)).filter(n => !isNaN(n)));
         }
 
-        const shouldUseFixed = sessionStorage.getItem('triggerFixedForNextGeneration') === 'true'; 
-        const fixedNumbersNextIndex = parseInt(sessionStorage.getItem('fixedNumbersNextIndex') || '0', 10); 
-
-        // Если триггер установлен И есть еще фиксированные числа для выдачи
-        if (shouldUseFixed && fixedNumbersNextIndex < fixedNumbersForFirstAttempt.length) { 
-            setTimeout(() => {
-                let numbersToDisplay = [];
-
-                // Добавляем следующее фиксированное число
-                numbersToDisplay.push(fixedNumbersForFirstAttempt[fixedNumbersNextIndex]);
-
-                // Если count > 1, заполняем оставшиеся места случайными числами
-                for (let i = 1; i < count; i++) {
-                    const randomNum = generateRandom(min, max, excludeSet);
-                    if (randomNum !== null) {
-                        numbersToDisplay.push(randomNum);
-                    } else {
-                        alert("Не удалось сгенерировать все числа из-за ограничений исключения.");
-                        break; 
-                    }
-                }
-
-                // Обновляем индекс для следующего фиксированного числа
-                const newFixedNumbersNextIndex = fixedNumbersNextIndex + 1;
-                if (newFixedNumbersNextIndex < fixedNumbersForFirstAttempt.length) {
-                    sessionStorage.setItem('fixedNumbersNextIndex', newFixedNumbersNextIndex.toString());
-                } else {
-                    // Все фиксированные числа выданы
-                    sessionStorage.removeItem('triggerFixedForNextGeneration'); // Удаляем триггер
-                    sessionStorage.removeItem('fixedNumbersNextIndex'); // Очищаем индекс
-                    setFixedNumbersTriggeredEver(); // Устанавливаем флаг, что фиксированные числа были выданы (и больше не должны выпадать)
-                }
-
-                // Выводим числа
-                const resultEl = document.getElementById('result');
-                resultEl.innerHTML = '';
-                numbersToDisplay.forEach((n, i) => {
-                    const span = document.createElement('span');
-                    span.textContent = n;
-                    if (i < numbersToDisplay.length - 1) {
-                        span.style.marginRight = '2rem'
-                    }
-                    span.className = 'digit';
-                    span.style.animationDelay = `${i * 0.1}s`;
-                    resultEl.appendChild(span);
-                });
-
-                // Логика сохранения (остается прежней)
-                const promo = document.getElementById('promo');
-                if (promo) {
-                    promo.innerHTML = `<a href="#" id="saveLink" style="color:red; text-decoration: underline;">сохранить это число</a>`;
-
-                    const oldLink = document.getElementById('saveLink');
-                    if (oldLink) {
-                        oldLink.replaceWith(oldLink.cloneNode(true));
-                    }
-
-                    document.getElementById('saveLink').onclick = (e) => {
-                        e.preventDefault();
-                        const saved = document.getElementById('result').textContent.trim();
-                        let prev = JSON.parse(sessionStorage.getItem('savedNumbers') || '[]');
-                        prev.push(saved);
-                        if (prev.length > 2) prev = prev.slice(-2);
-                        sessionStorage.setItem('savedNumbers', JSON.stringify(prev));
-                        document.getElementById('savedValue').textContent = prev.join(' | ');
-                        document.getElementById('savedBlock').style.display = 'block';
-                    };
-                }
-
-            }, 1000); 
-            return; 
-        }
-
-        // --- Обычная логика генерации случайных чисел (если фиксированные числа не используются или уже выданы) ---
         setTimeout(() => {
             let numbers = [];
-
             previouslyGenerated.forEach(num => excludeSet.add(num));
-            if (exclude && (max - min + 1 - excludeSet.size < count)) {
-                alert("Диапазон слишком маленький для исключения повторов или слишком много чисел исключено.");
+
+            if (max - min + 1 - excludeSet.size < count) {
+                alert("Диапазон слишком маленький для исключения всех повторов. Закройте и откройте вкладку, чтобы сбросить историю.");
                 return;
             }
 
-            const used = new Set(); 
-
+            const used = new Set();
             while (numbers.length < count) {
-                const num = generateRandom(min, max, excludeSet); 
+                const num = generateRandom(min, max, excludeSet);
                 if (num !== null) {
-                     if (!used.has(num)) { 
+                    if (!used.has(num)) {
                         used.add(num);
                         numbers.push(num);
                         previouslyGenerated.add(num);
                     }
                 } else {
-                    alert("Не удалось сгенерировать все числа из-за ограничений исключения.");
+                    alert("Не удалось сгенерировать уникальное число. Возможно, диапазон исчерпан. Закройте и откройте вкладку, чтобы сбросить историю.");
                     break;
                 }
             }
@@ -560,119 +451,20 @@
             numbers.forEach((n, i) => {
                 const span = document.createElement('span');
                 span.textContent = n;
-                if (i < numbers.length - 1) {
-                    span.style.marginRight = '2rem'
-                }
                 span.className = 'digit';
                 span.style.animationDelay = `${i * 0.1}s`;
                 resultEl.appendChild(span);
             });
-
-            const promo = document.getElementById('promo');
-            if (promo) {
-                promo.innerHTML = `<a href="#" id="saveLink" style="color:red; text-decoration: underline;">сохранить это число</a>`;
-                const oldLink = document.getElementById('saveLink');
-                if (oldLink) {
-                    oldLink.replaceWith(oldLink.cloneNode(true));
-                }
-                document.getElementById('saveLink').onclick = (e) => {
-                    e.preventDefault();
-                    const saved = document.getElementById('result').textContent.trim();
-                    let prev = JSON.parse(sessionStorage.getItem('savedNumbers') || '[]');
-                    prev.push(saved);
-                    if (prev.length > 2) prev = prev.slice(-2);
-                    sessionStorage.setItem('savedNumbers', JSON.stringify(prev));
-                    document.getElementById('savedValue').textContent = prev.join(' | ');
-                    document.getElementById('savedBlock').style.display = 'block';
-                };
-            }
-
-        }, 1000); 
+        }, 1000);
     }
     
-    const recordBtn = document.getElementById('recordBtn');
-    const stopBtn = document.getElementById('stopRecordBtn');
-
-      let mediaRecorder;
-      let recordedChunks = [];
-
-      recordBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        startRecording();
-      });
-
-      stopBtn.addEventListener('click', () => {
-        stopRecording();
-      });
-
-      async function startRecording() {
-        try {
-          const stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 } });
-          mediaRecorder = new MediaRecorder(stream);
-          recordedChunks = [];
-
-          mediaRecorder.ondataavailable = e => {
-            if (e.data.size > 0) recordedChunks.push(e.data);
-          };
-
-          mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks, { type: "video/webm" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
-            a.download = "generation.webm";
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-              URL.revokeObjectURL(url);
-              document.body.removeChild(a);
-            }, 100);
-            stopBtn.style.display = 'none';
-          };
-
-          mediaRecorder.start();
-          stopBtn.style.display = 'inline-block';
-          alert('Запись началась. Нажмите "Остановить запись" или "Stop sharing", чтобы сохранить видео.');
-
-        } catch (err) {
-          alert('Ошибка записи: ' + err.message);
-        }
-      }
-
-      function stopRecording() {
-        if (!mediaRecorder) {
-          alert("Запись ещё не началась.");
-          return;
-        }
-
-        if (mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop();
-        } else {
-          alert("Запись уже остановлена.");
-        }
-      }
-
-    const rangeSlider = document.getElementById('rangeSlider');
-    const rangeValue = document.getElementById('rangeValue');
-
-    function updateSliderStyle() {
-      const val = ((rangeSlider.value - rangeSlider.min) / (rangeSlider.max - rangeSlider.min)) * 100;
-      rangeSlider.style.setProperty('--val', `${val}%`);
-    }
-
-    rangeSlider.addEventListener('input', function () {
-      rangeValue.textContent = this.value;
-      updateSliderStyle();
+    document.getElementById('rangeSlider').addEventListener('input', function () {
+      document.getElementById('rangeValue').textContent = this.value;
     });
-
+    
     document.getElementById('exclude').addEventListener('change', function () {
-      const block = document.getElementById('excludeInput');
-      block.style.display = this.checked ? 'block' : 'none';
+      document.getElementById('excludeInput').style.display = this.checked ? 'block' : 'none';
     });
-
-    updateSliderStyle();
-
-  </script>
+</script>
 </body>
 </html>
